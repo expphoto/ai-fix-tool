@@ -107,6 +107,68 @@ FixRunner/
     └── FixRegistryIssuesTool.cs
 ```
 
+## Standalone Tools
+
+The `Standalone Tools/` folder contains self-contained, quick‑use AI triage scripts that do not require building or running FixRunner. They are intended for ad‑hoc investigations (e.g., over ScreenConnect) and use conservative allowlists to keep actions safe.
+
+- Windows PowerShell: `Standalone Tools/aiauto.ps1`
+- Windows one‑liner wrapper: `Standalone Tools/aiauto.bat` (drops a temp PS1 and runs it)
+- macOS/Linux Bash: `Standalone Tools/aiautomac.sh`
+
+What they do:
+- Guided AI triage: Iteratively proposes 1–2 commands per step, executes within guardrails, and compiles a final human‑readable report.
+- Guardrails: Allowlist for read‑only diagnostics by default; optional flags enable limited maintenance or targeted process kills.
+- Logging: Writes logs under `C:\ProgramData\AIExec\logs` (Windows) or uses `/tmp` for temp script on macOS/Linux.
+
+Windows usage examples:
+```powershell
+# Direct PS1 (recommended)
+./Standalone Tools/aiauto.ps1 -Goal "Investigate slowness" -AllowMaintenance
+
+# Batch wrapper (drops to C:\Windows\Temp)
+./Standalone Tools/aiauto.bat
+```
+
+macOS/Linux usage example:
+```bash
+bash "Standalone Tools/aiautomac.sh" "Investigate slowness"
+# Append --danger to relax guardrails (not recommended):
+bash "Standalone Tools/aiautomac.sh" "Investigate slowness" --danger
+```
+
+Flags (Windows PS1):
+- `-AllowMaintenance`: Permit SFC/DISM and service restarts
+- `-AllowKill`: Permit targeted `taskkill`/`Stop-Process`
+- `-AllowDangerous`: Override most allowlists (still hard‑blocks critical ops)
+
+Notes:
+- Requires `OPENAI_API_KEY` in the environment to contact the API.
+- These scripts are separate from FixRunner’s tool registry and undo model.
+
+## FixRunner vs. Standalone Tools
+
+Overlap (both):
+- Safe diagnostics: Run read‑only triage commands and capture outputs/logs
+- Windows support: Run on Windows endpoints (Standalone also supports macOS/Linux)
+- Operator control: Favor safety; avoid destructive commands by default
+
+FixRunner only:
+- Allow‑listed, deterministic tools with JSON‑schema validated arguments
+- Reversible actions with `--undo` (tools emit `UndoScript`)
+- Structured journaling under `%ProgramData%\FixRunner\logs\` with per‑tool entries
+- Planner‑driven issue flows (`--issue ... --dry-run/--execute`)
+- No external API required for execution; optional planner can call an API
+
+Standalone only:
+- Cross‑platform triage (Windows/macOS/Linux) without building the .NET app
+- LLM‑guided free‑form steps within guardrails; final human‑readable report
+- Uses environment `OPENAI_API_KEY` and makes network calls to an API
+- No tool registry, no JSON schema validation, and no undo support
+
+Not supported by either (by default):
+- Running arbitrary destructive commands (e.g., `format`, `bcdedit`, shutdown/reboot)
+- Unattended high‑risk maintenance without explicit operator opt‑in
+
 ## Example Plan → Execute → Undo
 
 Dry run for Outlook not opening:
